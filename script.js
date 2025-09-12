@@ -19,19 +19,49 @@ const DOM = {
 let projects = [];
 let selectedProjectId = null;
 let isBuilding = false;
+let ws;
 
-// --- WebSocket Bridge Simulation ---
-const backend = new MockBackend({
-    onOpen: handleBackendOpen,
-    onMessage: handleBackendMessage,
-    onClose: handleBackendClose,
-    onError: handleBackendError
-});
+// --- WebSocket Bridge Connection ---
 
-function handleBackendOpen() {
-    updateStatus('connected', 'Connected to Bridge');
-    DOM.projectSelection.classList.remove('hidden');
-    fetchProjects();
+function connectWebSocket() {
+    // Close any existing connection
+    if (ws && ws.readyState !== WebSocket.CLOSED) {
+        ws.close();
+    }
+
+    ws = new WebSocket('ws://localhost:8080');
+    updateStatus('connecting', 'Connecting...');
+
+    ws.onopen = () => {
+        console.log("WebSocket connection established.");
+        updateStatus('connected', 'Connected to Bridge');
+        DOM.projectSelection.classList.remove('hidden');
+        fetchProjects();
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            handleBackendMessage(data);
+        } catch (error) {
+            console.error("Error parsing message from backend:", error);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("WebSocket connection closed.");
+        updateStatus('error', 'Bridge Disconnected');
+        disableAllSections();
+        // Attempt to reconnect after a delay
+        setTimeout(connectWebSocket, 3000);
+    };
+
+    ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        updateStatus('error', 'Connection Failed');
+        disableAllSections();
+        // The onclose event will fire next, which will handle reconnection logic.
+    };
 }
 
 function handleBackendMessage(data) {
@@ -48,14 +78,13 @@ function handleBackendMessage(data) {
     }
 }
 
-function handleBackendClose() {
-    updateStatus('error', 'Bridge Disconnected');
-    disableAllSections();
-}
-
-function handleBackendError() {
-    updateStatus('error', 'Connection Failed');
-    disableAllSections();
+function sendToBackend(data) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+    } else {
+        console.error("WebSocket is not open. Cannot send message.");
+        appendLog("Cannot send command: bridge is not connected.", "error");
+    }
 }
 
 // --- UI Updates ---
@@ -89,7 +118,6 @@ function disableAllSections() {
     DOM.buildControls.classList.add('hidden');
     DOM.outputLog.classList.add('hidden');
 }
-
 
 // --- Project Logic ---
 async function fetchProjects() {
@@ -161,8 +189,9 @@ function selectProject(projectId) {
     DOM.outputLog.classList.add('hidden'); // Hide log on new selection
     DOM.downloadSection.classList.add('hidden');
 
+    clearLog();
     appendLog(`Selected project: ${selectedProject.title}`);
-    backend.send({
+    sendToBackend({
         type: 'select-project',
         payload: selectedProject
     });
@@ -198,7 +227,7 @@ DOM.platformButtons.forEach(button => {
         clearLog();
         appendLog(`Starting build for ${platform}...`, 'command');
         
-        backend.send({
+        sendToBackend({
             type: 'build',
             payload: {
                 projectId: selectedProjectId,
@@ -210,9 +239,7 @@ DOM.platformButtons.forEach(button => {
 
 // --- Initialisation ---
 function init() {
-    updateStatus('connecting', 'Connecting...');
-    backend.connect();
+    connectWebSocket();
 }
 
 init();
-
