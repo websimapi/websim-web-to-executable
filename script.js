@@ -1,5 +1,3 @@
-import { MockBackend } from 'backend-simulator';
-
 const DOM = {
     statusDot: document.getElementById('status-dot'),
     statusText: document.getElementById('status-text'),
