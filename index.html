@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web to Executable</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
     <div id="app-container">
@@ -22,6 +24,7 @@
                     <span id="status-text">Disconnected</span>
                 </div>
                 <p class="small-text">This tool requires a local Node.js bridge application running on your computer.</p>
+                <button id="download-bridge-btn">Download Node.js Bridge (.zip)</button>
             </section>
 
             <section id="project-selection" class="hidden">

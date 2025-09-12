@@ -12,6 +12,7 @@ const DOM = {
     logOutput: document.getElementById('log-output'),
     downloadSection: document.getElementById('download-section'),
     downloadButton: document.getElementById('download-button'),
+    downloadBridgeBtn: document.getElementById('download-bridge-btn'),
 };
 
 let projects = [];
@@ -82,6 +83,54 @@ function sendToBackend(data) {
     } else {
         console.error("WebSocket is not open. Cannot send message.");
         appendLog("Cannot send command: bridge is not connected.", "error");
+    }
+}
+
+// --- Download Bridge Logic ---
+async function downloadBridgeFiles() {
+    const btn = DOM.downloadBridgeBtn;
+    btn.disabled = true;
+    btn.textContent = 'Packaging...';
+
+    try {
+        const zip = new JSZip();
+        
+        const filesToZip = {
+            'server.js': '/server.js',
+            'package.json': '/package.json',
+            'README.md': '/README.md',
+            'start.sh': '/bash'
+        };
+
+        for (const [fileName, filePath] of Object.entries(filesToZip)) {
+            const response = await fetch(filePath);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${filePath}`);
+            }
+            const content = await response.text();
+            zip.file(fileName, content);
+        }
+
+        // Add a Windows start script
+        const batContent = `@echo off
+echo Installing dependencies...
+call npm install
+echo.
+echo Starting bridge server...
+call npm start
+`;
+        zip.file('start.bat', batContent);
+
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        saveAs(content, 'web-to-executable-bridge.zip');
+        
+    } catch (error) {
+        console.error('Error creating zip file:', error);
+        alert('Could not create the download file. Please check the console for errors.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download Node.js Bridge (.zip)';
     }
 }
 
@@ -234,6 +283,8 @@ DOM.platformButtons.forEach(button => {
         });
     });
 });
+
+DOM.downloadBridgeBtn.addEventListener('click', downloadBridgeFiles);
 
 // --- Initialisation ---
 function init() {

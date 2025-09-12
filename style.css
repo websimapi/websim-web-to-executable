@@ -261,6 +261,27 @@ section h2 {
     background-color: #27ae60;
 }
 
+#download-bridge-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 15px;
+}
+#download-bridge-btn:hover {
+    background-color: #5849d1; /* A darker shade of accent */
+}
+#download-bridge-btn:disabled {
+    background-color: var(--secondary-color);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
 /* Utility classes */
 .hidden {
     display: none;
@@ -287,4 +308,3 @@ footer {
     padding-top: 20px;
     border-top: 1px solid var(--secondary-color);
 }
-
