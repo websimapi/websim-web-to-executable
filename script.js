@@ -1,0 +1,218 @@
+import { MockBackend } from 'backend-simulator';
+
+const DOM = {
+    statusDot: document.getElementById('status-dot'),
+    statusText: document.getElementById('status-text'),
+    projectSelection: document.getElementById('project-selection'),
+    projectListLoader: document.getElementById('project-list-loader'),
+    projectList: document.getElementById('project-list'),
+    searchBar: document.getElementById('search-bar'),
+    buildControls: document.getElementById('build-controls'),
+    selectedProjectName: document.getElementById('selected-project-name'),
+    platformButtons: document.querySelectorAll('.platform-btn'),
+    outputLog: document.getElementById('output-log'),
+    logOutput: document.getElementById('log-output'),
+    downloadSection: document.getElementById('download-section'),
+    downloadButton: document.getElementById('download-button'),
+};
+
+let projects = [];
+let selectedProjectId = null;
+let isBuilding = false;
+
+// --- WebSocket Bridge Simulation ---
+const backend = new MockBackend({
+    onOpen: handleBackendOpen,
+    onMessage: handleBackendMessage,
+    onClose: handleBackendClose,
+    onError: handleBackendError
+});
+
+function handleBackendOpen() {
+    updateStatus('connected', 'Connected to Bridge');
+    DOM.projectSelection.classList.remove('hidden');
+    fetchProjects();
+}
+
+function handleBackendMessage(data) {
+    if (data.type === 'log') {
+        appendLog(data.message, data.level);
+    } else if (data.type === 'build-complete') {
+        appendLog(`✅ Build successful for ${data.platform}!`, 'success');
+        DOM.downloadButton.onclick = () => alert(`Downloading your ${data.platform} executable... (simulation)`);
+        DOM.downloadSection.classList.remove('hidden');
+        finishBuild();
+    } else if (data.type === 'error') {
+        appendLog(`❌ Error: ${data.message}`, 'error');
+        finishBuild();
+    }
+}
+
+function handleBackendClose() {
+    updateStatus('error', 'Bridge Disconnected');
+    disableAllSections();
+}
+
+function handleBackendError() {
+    updateStatus('error', 'Connection Failed');
+    disableAllSections();
+}
+
+// --- UI Updates ---
+function updateStatus(status, text) {
+    DOM.statusDot.className = `dot ${status}`;
+    DOM.statusText.textContent = text;
+}
+
+function appendLog(message, level = 'info') {
+    const entry = document.createElement('span');
+    entry.className = `log-entry ${level}`;
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n`;
+    DOM.logOutput.appendChild(entry);
+    DOM.logOutput.parentElement.scrollTop = DOM.logOutput.parentElement.scrollHeight;
+}
+
+function clearLog() {
+    DOM.logOutput.innerHTML = '';
+}
+
+function finishBuild() {
+    isBuilding = false;
+    DOM.platformButtons.forEach(btn => {
+        btn.classList.remove('building');
+        btn.disabled = false;
+    });
+}
+
+function disableAllSections() {
+    DOM.projectSelection.classList.add('hidden');
+    DOM.buildControls.classList.add('hidden');
+    DOM.outputLog.classList.add('hidden');
+}
+
+
+// --- Project Logic ---
+async function fetchProjects() {
+    try {
+        const creator = await window.websim.getCreator();
+        if (!creator) {
+            throw new Error("Could not identify the creator.");
+        }
+        
+        // This is a hypothetical API endpoint. We'll use mocked data for this example.
+        // const response = await fetch(`/api/v1/users/${creator.username}/projects`);
+        // if (!response.ok) throw new Error('Failed to fetch projects');
+        // const data = await response.json();
+        // projects = data.projects;
+
+        // Mocked data:
+        projects = [
+            { id: 'proj_1', title: 'My Portfolio', description: 'Personal portfolio website built with React.' },
+            { id: 'proj_2', title: 'E-commerce Store', description: 'A fully functional online store.' },
+            { id: 'proj_3', title: 'Weather App', description: 'Displays weather using a third-party API.' },
+            { id: 'proj_4', title: 'Blog Platform', description: 'A simple markdown-based blog.' },
+            { id: 'proj_5', title: 'Task Manager', description: 'A to-do list application.' },
+        ];
+
+    } catch (error) {
+        console.error("Project fetch error:", error);
+        appendLog(`Error fetching projects: ${error.message}`, 'error');
+        projects = []; // Fallback to empty list
+    } finally {
+        DOM.projectListLoader.classList.add('hidden');
+        renderProjects(projects);
+    }
+}
+
+function renderProjects(projectsToRender) {
+    DOM.projectList.innerHTML = '';
+    if (projectsToRender.length === 0) {
+        DOM.projectList.innerHTML = '<li class="project-item">No projects found.</li>';
+        return;
+    }
+    projectsToRender.forEach(project => {
+        const li = document.createElement('li');
+        li.className = 'project-item';
+        li.dataset.projectId = project.id;
+        li.innerHTML = `
+            <div>
+                <div class="title">${project.title}</div>
+                <div class="description">${project.description}</div>
+            </div>
+            <span>▶</span>
+        `;
+        li.addEventListener('click', () => selectProject(project.id));
+        DOM.projectList.appendChild(li);
+    });
+}
+
+function selectProject(projectId) {
+    selectedProjectId = projectId;
+    const selectedProject = projects.find(p => p.id === projectId);
+    
+    // Update UI
+    document.querySelectorAll('.project-item').forEach(item => {
+        item.classList.toggle('selected', item.dataset.projectId === projectId);
+    });
+
+    DOM.selectedProjectName.textContent = selectedProject.title;
+    DOM.buildControls.classList.remove('hidden');
+    DOM.platformButtons.forEach(btn => btn.classList.add('ready'));
+    DOM.outputLog.classList.add('hidden'); // Hide log on new selection
+    DOM.downloadSection.classList.add('hidden');
+
+    appendLog(`Selected project: ${selectedProject.title}`);
+    backend.send({
+        type: 'select-project',
+        payload: selectedProject
+    });
+}
+
+// --- Event Listeners ---
+DOM.searchBar.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredProjects = projects.filter(p => 
+        p.title.toLowerCase().includes(searchTerm) || 
+        p.description.toLowerCase().includes(searchTerm)
+    );
+    renderProjects(filteredProjects);
+});
+
+DOM.platformButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        if (!selectedProjectId || isBuilding) return;
+
+        const platform = button.dataset.platform;
+        isBuilding = true;
+        
+        DOM.platformButtons.forEach(btn => {
+            btn.disabled = true;
+            btn.classList.remove('ready');
+            if (btn === button) {
+                btn.classList.add('building');
+            }
+        });
+        
+        DOM.outputLog.classList.remove('hidden');
+        DOM.downloadSection.classList.add('hidden');
+        clearLog();
+        appendLog(`Starting build for ${platform}...`, 'command');
+        
+        backend.send({
+            type: 'build',
+            payload: {
+                projectId: selectedProjectId,
+                platform: platform,
+            }
+        });
+    });
+});
+
+// --- Initialisation ---
+function init() {
+    updateStatus('connecting', 'Connecting...');
+    backend.connect();
+}
+
+init();
+

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web to Executable</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <header>
+            <img src="logo.png" alt="App Logo" class="logo">
+            <h1>Web to Executable</h1>
+            <p>Package your web projects into desktop applications.</p>
+        </header>
+
+        <main>
+            <section id="connection-status">
+                <h2>Bridge Connection</h2>
+                <div class="status-indicator" id="status-indicator">
+                    <span class="dot" id="status-dot"></span>
+                    <span id="status-text">Disconnected</span>
+                </div>
+                <p class="small-text">This tool requires a local Node.js bridge application running on your computer.</p>
+            </section>
+
+            <section id="project-selection" class="hidden">
+                <h2>1. Select a Project</h2>
+                <div class="search-container">
+                    <input type="text" id="search-bar" placeholder="Search your projects...">
+                </div>
+                <div id="project-list-container">
+                    <div id="project-list-loader" class="loader"></div>
+                    <ul id="project-list"></ul>
+                </div>
+            </section>
+
+            <section id="build-controls" class="hidden">
+                <h2>2. Generate Executable</h2>
+                <p>Selected Project: <strong id="selected-project-name"></strong></p>
+                <div id="platform-buttons">
+                    <button class="platform-btn" data-platform="windows">
+                        <img src="windows-icon.png" alt="Windows">
+                        <span>Windows (.exe)</span>
+                    </button>
+                    <button class="platform-btn" data-platform="macos">
+                        <img src="macos-icon.png" alt="macOS">
+                        <span>macOS (.app)</span>
+                    </button>
+                    <button class="platform-btn" data-platform="linux">
+                        <img src="linux-icon.png" alt="Linux">
+                        <span>Linux (AppImage)</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="output-log" class="hidden">
+                <h2>3. Build Log</h2>
+                <div id="log-container">
+                    <pre id="log-output"></pre>
+                </div>
+                 <div id="download-section" class="hidden">
+                    <button id="download-button">Download Executable</button>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>Powered by Websim</p>
+        </footer>
+    </div>
+    <script type="importmap">
+      {
+        "imports": {
+          "backend-simulator": "./backend-simulator.js"
+        }
+      }
+    </script>
+    <script type="module" src="script.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
